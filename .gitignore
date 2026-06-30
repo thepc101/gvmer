@@ -1,0 +1,46 @@
+# dependencies
+/node_modules
+
+# build output
+/dist
+/release
+
+# next.js / vite
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Certificates (do not commit signing certs)
+*.p12
+*.pfx
+*.pem
+
+# Electron builder
+electron-builder.env
+
+# TypeScript
+*.tsbuildinfo
+
+# Temp
+tmp/
+temp/

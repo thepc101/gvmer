@@ -1,0 +1,139 @@
+# =============================================================================
+# gvmer — electron-builder configuration
+# =============================================================================
+# To code-sign, set these environment variables before building:
+#
+#   CSC_LINK=C:\path\to\certificate.p12
+#   CSC_KEY_PASSWORD=your-cert-password
+#   WIN_CSC_LINK=%CSC_LINK%
+#   WIN_CSC_KEY_PASSWORD=%CSC_KEY_PASSWORD%
+#   WIN_SIGNTOOL_PARAMS=/tr http://timestamp.digicert.com /td sha256 /fd sha256
+#
+# For auto-updates, set:
+#   GH_TOKEN=your-github-token
+#
+# All signing config is placeholder-ready below.
+# =============================================================================
+
+appId: com.gvmer.desktop
+productName: gvmer
+copyright: "Copyright © 2024 gvmer Inc."
+
+# ---------------------------------------------------------------------------
+# Directories
+# ---------------------------------------------------------------------------
+directories:
+  buildResources: build
+  output: release
+
+# ---------------------------------------------------------------------------
+# Files to include in the asar
+# ---------------------------------------------------------------------------
+files:
+  - dist/**/*
+  - "!dist/renderer/src/**"
+  - package.json
+
+# ---------------------------------------------------------------------------
+# Code signing — drop-in ready
+# ---------------------------------------------------------------------------
+win:
+  # Authenticode signing
+  certificateFile: "${env.CSC_LINK}"            # ← set env var or hardcode path
+  certificatePassword: "${env.CSC_KEY_PASSWORD}" # ← set env var
+  signDlls: true
+  signAndEditExecutable: true
+  rfc3161TimeStampServer: "http://timestamp.digicert.com"
+
+  # Target installers
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: msi
+      arch: [x64]
+
+  # Windows-specific settings
+  publisherName: "gvmer Inc."
+  requestedExecutionLevel: "asInvoker"
+  legalTrademarks: "gvmer"
+
+  # Artifact naming
+  artifactName: "${productName}-${version}-setup.${ext}"
+
+# ---------------------------------------------------------------------------
+# NSIS installer configuration
+# ---------------------------------------------------------------------------
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "gvmer"
+  uninstallDisplayName: "gvmer ${version}"
+  installerIcon: "build/icon.ico"
+  uninstallerIcon: "build/icon.ico"
+  installerHeaderIcon: "build/icon.ico"
+  license: LICENSE
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+
+  # Installer-side code signing
+  signingHashAlgorithms: ["sha256"]
+  signingFile: "${env.CSC_LINK}"
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+mac:
+  category: public.app-category.games
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  artifactName: "${productName}-${version}.${ext}"
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+
+# ---------------------------------------------------------------------------
+# Linux
+# ---------------------------------------------------------------------------
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  category: Games
+  artifactName: "${productName}-${version}.${ext}"
+
+# ---------------------------------------------------------------------------
+# Auto-update (electron-updater)
+# ---------------------------------------------------------------------------
+publish:
+  provider: github
+  owner: thepc101
+  repo: gvmer
+  releaseType: release
+  # For private repos or alternative providers:
+  # provider: generic
+  # url: https://updates.gvmer.app
+
+# ---------------------------------------------------------------------------
+# Compression & optimization
+# ---------------------------------------------------------------------------
+compression: normal
+removePackageScripts: true
+nodeGypRebuild: false
+npmRebuild: true
+
+# ---------------------------------------------------------------------------
+# Extra metadata
+# ---------------------------------------------------------------------------
+extraMetadata:
+  author:
+    name: "gvmer Inc."
+    email: "support@gvmer.app"
