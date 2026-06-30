@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Logo } from "./Logo";
 import type { Page } from "../../../shared/types";
 
 interface TitleBarProps {
@@ -20,8 +21,9 @@ export function TitleBar({ currentPage, onNavigate, onSearchOpen }: TitleBarProp
 
   return (
     <div className="flex-shrink-0 h-10 bg-background flex items-center drag-region px-3 gap-2 border-b border-border">
-      {/* App title / Logo */}
+      {/* App logo */}
       <div className="flex items-center gap-2 min-w-[120px]">
+        <Logo size={16} />
         <span className="text-sm font-medium text-foreground tracking-tight">gvmer</span>
       </div>
 

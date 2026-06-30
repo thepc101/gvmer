@@ -1,0 +1,16 @@
+export function Logo({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 512 512"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M160 180c0-60 48-80 96-80 56 0 96 28 96 80v40h-56v-32c0-20-12-34-40-34-24 0-38 12-38 34s14 34 38 34h8l56 20c44 16 68 44 68 88 0 56-44 84-104 84s-112-28-112-84v-24h56v20c0 20 14 32 42 32s42-10 42-32-16-32-40-34l-58-22c-48-18-64-48-64-90z"
+        fill="#111111"
+      />
+    </svg>
+  );
+}
