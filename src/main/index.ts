@@ -6,19 +6,14 @@ import { createAppMenu } from "./menu";
 import { initLogger, getLogger } from "./services/logger";
 import { initCrashReporter } from "./services/crash-reporter";
 import { initAutoUpdater } from "./services/updater";
-import { initDatabase, closeDatabase } from "./services/database";
 import { scanForGames } from "./services/game-detector";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: ReturnType<typeof createTray> | null = null;
-const isDev = process.env.NODE_ENV !== "production";
+const isDev = !app.isPackaged;
 
 async function createWindow() {
   const log = getLogger();
-
-  // Initialize database first
-  await initDatabase();
-  log.info("[app] Database initialized");
 
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -58,17 +53,11 @@ async function createWindow() {
   });
 
   registerIpcHandlers(mainWindow);
-
-  // Tray
   tray = createTray(mainWindow);
-
-  // Menu
   createAppMenu(mainWindow);
 
-  // Auto-updater
   if (!isDev) initAutoUpdater(mainWindow);
 
-  // Initial game scan
   setTimeout(async () => {
     try {
       const games = scanForGames();
@@ -80,7 +69,6 @@ async function createWindow() {
   }, 3000);
 }
 
-// --- Global shortcuts ---
 function registerGlobalShortcuts() {
   const log = getLogger();
   globalShortcut.register("CommandOrControl+K", () => mainWindow?.webContents.send("shortcut:search"));
@@ -89,7 +77,6 @@ function registerGlobalShortcuts() {
   log.info("[app] Global shortcuts registered");
 }
 
-// --- App lifecycle ---
 app.whenReady().then(async () => {
   initLogger();
   initCrashReporter();
@@ -115,7 +102,6 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   (app as any).isQuitting = true;
   globalShortcut.unregisterAll();
-  closeDatabase();
   destroyTray();
 });
 

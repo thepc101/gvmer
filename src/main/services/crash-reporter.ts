@@ -8,7 +8,7 @@ export function initCrashReporter() {
     productName: "gvmer",
     companyName: "gvmer Inc.",
     submitURL: "", // Replace with your crash reporting endpoint
-    uploadToServer: true,
+    uploadToServer: false,
     ignoreSystemCrashHandler: false,
     compress: true,
     rateLimit: true,

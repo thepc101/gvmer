@@ -1,28 +1,33 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { AboutPage } from "./AboutPage";
+import { useGame } from "../../lib/GameContext";
 
 const platforms = ["Steam", "Xbox", "Epic Games", "Discord", "Battle.net", "Minecraft", "EA", "Ubisoft"];
 
 export function SettingsPage() {
-  const [settings, setSettings] = useState<Record<string, any>>({});
+  const { getSettings, updateSetting, getProfile, updateProfile, deleteAccount, signOut } = useGame();
   const [connected, setConnected] = useState<Set<string>>(new Set(["Steam", "Discord"]));
   const [activeSection, setActiveSection] = useState("accounts");
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [status, setStatus] = useState("online");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    window.gvmer?.getSettings().then((s) => {
-      setSettings(s);
+    getSettings().then((s) => {
       if (s.connectedAccounts) setConnected(new Set(s.connectedAccounts));
     });
+    getProfile().then((p) => {
+      if (p) { setUsername(p.username); setStatus(p.status); }
+    });
 
-    // Update listeners
     const unsubChecking = window.gvmer?.onUpdateChecking(() => setUpdateStatus("Checking for updates..."));
     const unsubAvailable = window.gvmer?.onUpdateAvailable((info) =>
-      setUpdateStatus(`Update ${info.version} available — downloading...`)
+      setUpdateStatus(`Update ${info.version} available`)
     );
     const unsubDownloaded = window.gvmer?.onUpdateDownloaded((info) =>
-      setUpdateStatus(`Update ${info.version} downloaded. Click to install.`)
+      setUpdateStatus(`Update ${info.version} downloaded.`)
     );
     const unsubNotAvailable = window.gvmer?.onUpdateNotAvailable(() =>
       setUpdateStatus("You're up to date.")
@@ -32,33 +37,43 @@ export function SettingsPage() {
     );
 
     return () => {
-      unsubChecking?.();
-      unsubAvailable?.();
-      unsubDownloaded?.();
-      unsubNotAvailable?.();
-      unsubError?.();
+      unsubChecking?.(); unsubAvailable?.(); unsubDownloaded?.();
+      unsubNotAvailable?.(); unsubError?.();
     };
-  }, []);
+  }, [getSettings, getProfile]);
 
   const togglePlatform = async (p: string) => {
     const next = new Set(connected);
     if (next.has(p)) next.delete(p);
     else next.add(p);
     setConnected(next);
-    await window.gvmer?.updateSettings("connectedAccounts", Array.from(next));
+    await updateSetting("connectedAccounts", Array.from(next));
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Delete all data? This cannot be undone.")) return;
+    if (!confirm("Really? All games, progress, and settings will be removed.")) return;
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      await signOut();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const sections = [
     { id: "accounts", label: "Connected Accounts" },
     { id: "appearance", label: "Appearance" },
+    { id: "profile", label: "Profile" },
     { id: "privacy", label: "Privacy" },
     { id: "updates", label: "Updates" },
+    { id: "account", label: "Account" },
     { id: "about", label: "About" },
   ];
 
   return (
     <div className="flex h-full">
-      {/* Section sidebar */}
       <div className="w-48 border-r border-border flex-shrink-0 px-6 py-10">
         <span className="text-nav text-secondary tracking-widest block mb-6">Settings</span>
         <div className="flex flex-col gap-1">
@@ -76,7 +91,6 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {activeSection === "about" ? (
           <AboutPage />
@@ -135,37 +149,57 @@ export function SettingsPage() {
                 </>
               )}
 
+              {activeSection === "profile" && (
+                <>
+                  <span className="text-xs font-medium text-foreground tracking-wider">Profile</span>
+                  <div className="mt-4 space-y-4">
+                    <div className="flex items-center justify-between py-3.5 border-b border-border">
+                      <span className="text-sm text-foreground">Username</span>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={async (e) => {
+                          setUsername(e.target.value);
+                          await updateProfile({ username: e.target.value });
+                        }}
+                        className="text-sm text-secondary bg-transparent border border-border rounded-lg px-3 py-1.5 text-right focus:outline-none focus:border-foreground transition-colors w-40"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between py-3.5 border-b border-border">
+                      <span className="text-sm text-foreground">Status</span>
+                      <select
+                        value={status}
+                        onChange={async (e) => {
+                          setStatus(e.target.value);
+                          await updateProfile({ status: e.target.value });
+                        }}
+                        className="text-sm text-secondary bg-transparent border border-border rounded-lg px-3 py-1.5 text-right focus:outline-none focus:border-foreground transition-colors"
+                      >
+                        <option value="online">Online</option>
+                        <option value="idle">Idle</option>
+                        <option value="dnd">Do Not Disturb</option>
+                        <option value="offline">Offline</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
               {activeSection === "privacy" && (
                 <>
                   <span className="text-xs font-medium text-foreground tracking-wider">Privacy</span>
                   <div className="mt-4 space-y-1">
-                    <div className="flex items-center justify-between py-3.5 border-b border-border">
-                      <span className="text-sm text-foreground">Online Status</span>
-                      <div className="w-9 h-5 rounded-full bg-foreground relative">
-                        <motion.div
-                          animate={{ x: 18 }}
-                          className="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5"
-                        />
+                    {["Online Status", "Activity Visibility", "Notifications"].map((label) => (
+                      <div key={label} className="flex items-center justify-between py-3.5 border-b border-border">
+                        <span className="text-sm text-foreground">{label}</span>
+                        <div className="w-9 h-5 rounded-full bg-foreground relative">
+                          <motion.div
+                            animate={{ x: 18 }}
+                            className="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between py-3.5 border-b border-border">
-                      <span className="text-sm text-foreground">Activity Visibility</span>
-                      <div className="w-9 h-5 rounded-full bg-foreground relative">
-                        <motion.div
-                          animate={{ x: 18 }}
-                          className="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between py-3.5 border-b border-border">
-                      <span className="text-sm text-foreground">Notifications</span>
-                      <div className="w-9 h-5 rounded-full bg-foreground relative">
-                        <motion.div
-                          animate={{ x: 18 }}
-                          className="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5"
-                        />
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </>
               )}
@@ -177,26 +211,36 @@ export function SettingsPage() {
                     <div className="flex items-center justify-between py-3.5 border-b border-border">
                       <span className="text-sm text-foreground">Automatic Updates</span>
                       <div className="w-9 h-5 rounded-full bg-foreground relative">
-                        <motion.div
-                          animate={{ x: 18 }}
-                          className="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5"
-                        />
+                        <motion.div animate={{ x: 18 }} className="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5" />
                       </div>
                     </div>
                     <div className="mt-6">
                       <button
-                        onClick={() => {
-                          setUpdateStatus("Checking...");
-                          window.gvmer?.checkForUpdates();
-                        }}
+                        onClick={() => { setUpdateStatus("Checking..."); window.gvmer?.checkForUpdates(); }}
                         className="px-5 py-2.5 bg-foreground text-white text-sm rounded-full hover:opacity-90 transition-opacity duration-150"
                       >
                         Check for Updates
                       </button>
-                      {updateStatus && (
-                        <p className="text-xs text-secondary mt-3">{updateStatus}</p>
-                      )}
+                      {updateStatus && <p className="text-xs text-secondary mt-3">{updateStatus}</p>}
                     </div>
+                  </div>
+                </>
+              )}
+
+              {activeSection === "account" && (
+                <>
+                  <span className="text-xs font-medium text-foreground tracking-wider">Account</span>
+                  <div className="mt-6 space-y-4">
+                    <p className="text-sm text-secondary leading-relaxed">
+                      Permanently delete all data: games, achievements, XP, settings, and profile.
+                    </p>
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={deleting}
+                      className="px-5 py-2.5 bg-red-500 text-white text-sm rounded-full hover:bg-red-600 transition-colors duration-150 disabled:opacity-50"
+                    >
+                      {deleting ? "Resetting..." : "Delete All Data"}
+                    </button>
                   </div>
                 </>
               )}

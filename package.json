@@ -12,7 +12,7 @@
     "dev:preload": "esbuild src/preload/index.ts --bundle --platform=node --external:electron --outfile=dist/preload/index.js --watch",
     "dev:renderer": "vite",
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:preload\" \"npm run dev:renderer\"",
-    "build:main": "esbuild src/main/index.ts --bundle --platform=node --external:electron --external:electron-updater --outfile=dist/main/index.js --minify-whitespace --minify-syntax",
+    "build:main": "esbuild src/main/index.ts --bundle --platform=node --external:electron --external:electron-updater --outfile=dist/main/index.js --minify-whitespace --minify-syntax && node -e \"require('fs').copyFileSync(require.resolve('sql.js/dist/sql-wasm.wasm'), 'dist/main/sql-wasm.wasm')\"",
     "build:preload": "esbuild src/preload/index.ts --bundle --platform=node --external:electron --outfile=dist/preload/index.js --minify-whitespace --minify-syntax",
     "build:renderer": "vite build",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
@@ -27,9 +27,12 @@
     "analyze": "vite build --analyze"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
     "electron-log": "^5.0.0",
     "electron-updater": "^6.0.0",
     "framer-motion": "^11.0.0",
+    "groq-sdk": "^1.3.0",
+    "livekit-client": "^2.20.0",
     "lucide-react": "^0.400.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
@@ -46,8 +49,9 @@
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.1",
     "postcss": "^8.4.0",
+    "sharp": "^0.35.2",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.4.0",
-    "vite": "^8.1.2"
+    "vite": "^6.3.0"
   }
 }

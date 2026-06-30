@@ -16,28 +16,16 @@ const api = {
   // App info
   getAppInfo: () => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_INFO),
 
-  // Game detection
+  // Game scanning (local Steam detection)
   scanGames: () => ipcRenderer.invoke(IPC_CHANNELS.SCAN_GAMES),
-  getGames: () => ipcRenderer.invoke(IPC_CHANNELS.GET_GAMES),
-  getGame: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.GET_GAME, id),
+
+  // Launch game
   launchGame: (installPath: string, launcherId?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_GAME, installPath, launcherId),
 
-  // Settings
-  getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS),
-  updateSettings: (key: string, value: any) =>
-    ipcRenderer.invoke(IPC_CHANNELS.UPDATE_SETTINGS, key, value),
-
-  // User data
-  getUser: () => ipcRenderer.invoke(IPC_CHANNELS.GET_USER),
-  getXpEvents: () => ipcRenderer.invoke(IPC_CHANNELS.GET_XP_EVENTS),
-  getAchievements: () => ipcRenderer.invoke(IPC_CHANNELS.GET_ACHIEVEMENTS),
-
-  // Search
-  search: (query: string) => ipcRenderer.invoke(IPC_CHANNELS.SEARCH, query),
-
-  // Dialogs
+  // File dialogs
   selectDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.SELECT_DIRECTORY),
+  selectFile: () => ipcRenderer.invoke(IPC_CHANNELS.SELECT_FILE),
 
   // Platform
   getPlatform: () => ipcRenderer.invoke(IPC_CHANNELS.GET_PLATFORM),

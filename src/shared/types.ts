@@ -12,14 +12,16 @@ export interface Game {
   id: string;
   title: string;
   cover: string | null;
+  cover_image: string | null;
+  hero_image: string | null;
   developer: string;
-  platform: "Steam" | "Epic" | "Xbox" | "Battle.net" | "Minecraft" | "EA" | "Ubisoft" | "Other";
-  installPath: string;
-  hoursPlayed: number;
+  platform: string;
+  install_path: string;
+  hours_played: number;
   achievements: number;
-  totalAchievements: number;
-  lastPlayed: string | null;
-  launcherId: string | null;
+  total_achievements: number;
+  last_played: string | null;
+  launcher_id: string | null;
 }
 
 export interface User {
@@ -93,50 +95,35 @@ export interface Settings {
   autoUpdateEnabled: boolean;
 }
 
-// IPC channel names
 export const IPC_CHANNELS = {
-  // Window controls
   WINDOW_MINIMIZE: "window:minimize",
   WINDOW_MAXIMIZE: "window:maximize",
   WINDOW_CLOSE: "window:close",
   WINDOW_IS_MAXIMIZED: "window:isMaximized",
   WINDOW_ON_MAXIMIZE_CHANGE: "window:onMaximizeChange",
-
-  // App info
   GET_APP_INFO: "app:getInfo",
-
-  // Game detection
   SCAN_GAMES: "games:scan",
   GET_GAMES: "games:getAll",
   GET_GAME: "games:get",
   LAUNCH_GAME: "games:launch",
-
-  // Settings
+  ADD_GAME_MANUAL: "games:addManual",
+  DELETE_GAME: "games:delete",
+  UPDATE_GAME_IMAGE: "games:updateImage",
   GET_SETTINGS: "settings:get",
   UPDATE_SETTINGS: "settings:update",
-
-  // User data
+  DELETE_ACCOUNT: "account:delete",
   GET_USER: "user:get",
+  UPDATE_USER: "user:update",
   GET_XP_EVENTS: "xp:getEvents",
   GET_ACHIEVEMENTS: "achievements:getAll",
-
-  // Search
   SEARCH: "search:query",
-
-  // File dialogs
   SELECT_DIRECTORY: "dialog:selectDirectory",
-
-  // Platform info
+  SELECT_FILE: "dialog:selectFile",
+  SELECT_IMAGE: "dialog:selectImage",
   GET_PLATFORM: "platform:get",
-
-  // Updates
   CHECK_FOR_UPDATES: "update:check",
   DOWNLOAD_UPDATE: "update:download",
   INSTALL_UPDATE: "update:install",
-
-  // External links
   OPEN_EXTERNAL: "shell:openExternal",
-
-  // Renderer logging
   RENDERER_LOG: "renderer:log",
 } as const;

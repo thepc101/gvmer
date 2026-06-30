@@ -1,21 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { GameCard } from "../ui/GameCard";
+import { useGame } from "../../lib/GameContext";
 
 interface LibraryPageProps {
   onSelectGame: (id: string) => void;
 }
 
-const platforms = ["All", "Steam", "Epic", "Xbox", "Battle.net", "Minecraft", "EA", "Ubisoxt"];
+const platforms = ["All", "Steam", "Epic", "Xbox", "Battle.net", "Minecraft", "EA", "Ubisoft", "Other"];
 
 export function LibraryPage({ onSelectGame }: LibraryPageProps) {
+  const { getGames, addGameManual } = useGame();
   const [games, setGames] = useState<any[]>([]);
   const [activePlatform, setActivePlatform] = useState("All");
   const [scanning, setScanning] = useState(false);
 
-  useEffect(() => {
-    window.gvmer?.getGames().then(setGames);
-  }, []);
+  const loadGames = useCallback(async () => {
+    const g = await getGames();
+    if (g) setGames(g);
+  }, [getGames]);
+
+  useEffect(() => { loadGames(); }, [loadGames]);
 
   const filteredGames = useMemo(
     () =>
@@ -29,11 +34,18 @@ export function LibraryPage({ onSelectGame }: LibraryPageProps) {
     setScanning(true);
     try {
       await window.gvmer?.scanGames();
-      const updated = await window.gvmer?.getGames();
-      setGames(updated);
+      await loadGames();
     } finally {
       setScanning(false);
     }
+  };
+
+  const handleAddManual = async () => {
+    const exePath = await window.gvmer?.selectFile();
+    if (!exePath) return;
+    const title = exePath.split("\\").pop()?.split("/").pop()?.replace(/\.\w+$/, "") || "New Game";
+    const game = await addGameManual(title, exePath);
+    if (game) await loadGames();
   };
 
   return (
@@ -46,31 +58,37 @@ export function LibraryPage({ onSelectGame }: LibraryPageProps) {
       >
         <div>
           <span className="text-nav text-secondary tracking-widest">Library</span>
-          <p className="text-xs text-secondary mt-1">{games.length} games detected</p>
+          <p className="text-xs text-secondary mt-1">{games.length} games</p>
         </div>
-        <button
-          onClick={handleScan}
-          disabled={scanning}
-          className="text-xs text-foreground border border-border px-4 py-2 rounded-full hover:bg-[rgba(0,0,0,.04)] transition-colors duration-150 disabled:opacity-50"
-        >
-          {scanning ? "Scanning..." : "Scan for games"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleAddManual}
+            className="text-xs text-foreground border border-border px-4 py-2 rounded-full hover:bg-[rgba(0,0,0,.04)] transition-colors duration-150"
+          >
+            + Add Game
+          </button>
+          <button
+            onClick={handleScan}
+            disabled={scanning}
+            className="text-xs text-foreground border border-border px-4 py-2 rounded-full hover:bg-[rgba(0,0,0,.04)] transition-colors duration-150 disabled:opacity-50"
+          >
+            {scanning ? "Scanning..." : "Scan"}
+          </button>
+        </div>
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-        className="flex gap-6 mt-8 border-b border-border pb-0"
+        className="flex gap-6 mt-8 border-b border-border pb-0 overflow-x-auto"
       >
         {platforms.map((p) => (
           <button
             key={p}
             onClick={() => setActivePlatform(p)}
-            className={`text-nav pb-3 transition-colors duration-150 relative ${
-              activePlatform === p
-                ? "text-foreground"
-                : "text-secondary hover:text-foreground"
+            className={`text-nav pb-3 whitespace-nowrap transition-colors duration-150 relative ${
+              activePlatform === p ? "text-foreground" : "text-secondary hover:text-foreground"
             }`}
           >
             {p}

@@ -1,11 +1,8 @@
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
-import { execute, query } from "./database";
-import type { Game } from "../../shared/types";
 
-export function scanForGames(): Game[] {
-  const discovered: Game[] = [];
+export function scanForGames(): any[] {
+  const discovered: any[] = [];
   const seen = new Set<string>();
 
   const commonSteamPaths = [
@@ -27,23 +24,10 @@ export function scanForGames(): Game[] {
     } catch {}
   }
 
-  // Store discovered games in database
-  const existing = query("SELECT id FROM games");
-  const existingIds = new Set(existing.map((r: any) => r.id));
-
-  for (const game of discovered) {
-    if (!existingIds.has(game.id)) {
-      execute(
-        "INSERT INTO games (id, title, cover, developer, platform, install_path, hours_played, last_played) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [game.id, game.title, game.cover, game.developer, game.platform, game.installPath, game.hoursPlayed, game.lastPlayed]
-      );
-    }
-  }
-
   return discovered;
 }
 
-function createGameFromPath(name: string, fullPath: string, platform: string): Game | null {
+function createGameFromPath(name: string, fullPath: string, platform: string): any | null {
   try {
     const stat = fs.statSync(fullPath);
     if (!stat.isDirectory()) return null;
@@ -55,14 +39,16 @@ function createGameFromPath(name: string, fullPath: string, platform: string): G
       id,
       title: name,
       cover: null,
+      cover_image: null,
+      hero_image: null,
       developer: "",
-      platform: platform as Game["platform"],
-      installPath: fullPath,
-      hoursPlayed: 0,
+      platform,
+      install_path: fullPath,
+      hours_played: 0,
       achievements: 0,
-      totalAchievements: 0,
-      lastPlayed: null,
-      launcherId: executable || null,
+      total_achievements: 0,
+      last_played: null,
+      launcher_id: executable || null,
     };
   } catch {
     return null;
@@ -84,21 +70,4 @@ function findExecutable(dir: string): string | null {
   } catch {
     return null;
   }
-}
-
-export function getStoredGames(): Game[] {
-  const rows = query("SELECT * FROM games ORDER BY last_played DESC") as any[];
-  return rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    cover: r.cover,
-    developer: r.developer || "",
-    platform: r.platform,
-    installPath: r.install_path || "",
-    hoursPlayed: r.hours_played || 0,
-    achievements: r.achievements || 0,
-    totalAchievements: r.total_achievements || 0,
-    lastPlayed: r.last_played,
-    launcherId: r.launcher_id,
-  }));
 }

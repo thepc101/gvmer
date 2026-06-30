@@ -6,11 +6,12 @@ interface GameCardProps {
     id: string;
     title: string;
     cover: string | null;
+    cover_image: string | null;
     developer: string;
     platform: string;
-    hoursPlayed: number;
+    hours_played: number;
     achievements: number;
-    totalAchievements: number;
+    total_achievements: number;
   };
   onSelect: (id: string) => void;
   variant?: "default" | "landscape" | "horizontal";
@@ -20,6 +21,21 @@ function formatHours(minutes: number): string {
   const h = Math.floor(minutes / 60);
   if (h < 1) return `${minutes}m`;
   return `${h}h ${minutes % 60}m`;
+}
+
+function GameImage({ game, className }: { game: any; className: string }) {
+  const imgSrc = game.cover_image ? "file://" + game.cover_image : game.cover;
+  if (imgSrc) {
+    return (
+      <img
+        src={imgSrc}
+        alt=""
+        className={className + " object-cover"}
+        onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
+      />
+    );
+  }
+  return null;
 }
 
 export function GameCard({ game, onSelect, variant = "default" }: GameCardProps) {
@@ -36,6 +52,7 @@ export function GameCard({ game, onSelect, variant = "default" }: GameCardProps)
         transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
         className="relative w-full aspect-[16/9] bg-border rounded-2xl overflow-hidden group text-left"
       >
+        <GameImage game={game} className="absolute inset-0 w-full h-full" />
         <motion.div
           className="absolute inset-0 bg-foreground/5"
           animate={{ scale: hovered ? 1.05 : 1 }}
@@ -46,7 +63,7 @@ export function GameCard({ game, onSelect, variant = "default" }: GameCardProps)
           <h2 className="text-2xl font-medium text-white mb-1">{game.title}</h2>
           <p className="text-sm text-white/70">{game.developer}</p>
           <div className="flex items-center gap-4 mt-3">
-            <span className="text-xs text-white/50">{formatHours(game.hoursPlayed)} played</span>
+            <span className="text-xs text-white/50">{formatHours(game.hours_played)} played</span>
             <span className="text-xs text-white/50">{game.achievements} achievements</span>
           </div>
         </div>
@@ -76,6 +93,7 @@ export function GameCard({ game, onSelect, variant = "default" }: GameCardProps)
         className="flex-shrink-0 w-[180px] text-left group"
       >
         <div className="relative aspect-[3/4] bg-border rounded-xl overflow-hidden mb-3">
+          <GameImage game={game} className="absolute inset-0 w-full h-full" />
           <motion.div
             className="absolute inset-0 bg-foreground/5"
             animate={{ scale: hovered ? 1.08 : 1 }}
@@ -83,7 +101,7 @@ export function GameCard({ game, onSelect, variant = "default" }: GameCardProps)
           />
         </div>
         <h3 className="text-sm font-medium text-foreground truncate">{game.title}</h3>
-        <p className="text-xs text-secondary mt-0.5">{formatHours(game.hoursPlayed)} played</p>
+        <p className="text-xs text-secondary mt-0.5">{formatHours(game.hours_played)} played</p>
         <p className="text-xs text-secondary">{game.achievements} achievements</p>
       </motion.button>
     );
@@ -100,6 +118,7 @@ export function GameCard({ game, onSelect, variant = "default" }: GameCardProps)
       className="w-full text-left group"
     >
       <div className="relative aspect-[3/4] bg-border rounded-xl overflow-hidden mb-4 shadow-card transition-shadow duration-200 group-hover:shadow-card-hover">
+        <GameImage game={game} className="absolute inset-0 w-full h-full" />
         <motion.div
           className="absolute inset-0 bg-foreground/5"
           animate={{ scale: hovered ? 1.05 : 1 }}
@@ -114,8 +133,8 @@ export function GameCard({ game, onSelect, variant = "default" }: GameCardProps)
       <h3 className="text-sm font-medium text-foreground truncate">{game.title}</h3>
       <p className="text-xs text-secondary mt-0.5 truncate">{game.developer}</p>
       <div className="flex items-center gap-3 mt-1.5">
-        <span className="text-xs text-secondary">{formatHours(game.hoursPlayed)}</span>
-        <span className="text-xs text-secondary">{game.achievements}/{game.totalAchievements} ach.</span>
+        <span className="text-xs text-secondary">{formatHours(game.hours_played)}</span>
+        <span className="text-xs text-secondary">{game.achievements}/{game.total_achievements} ach.</span>
       </div>
     </motion.button>
   );

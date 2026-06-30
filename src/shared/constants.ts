@@ -1,12 +1,12 @@
-export const NAV_ITEMS: { label: string; page: import("./types").Page }[] = [
-  { label: "Home", page: "home" },
-  { label: "Library", page: "library" },
-  { label: "Social", page: "social" },
-  { label: "Messages", page: "messages" },
-  { label: "Parties", page: "parties" },
-  { label: "Profile", page: "profile" },
-  { label: "Discover", page: "discover" },
-  { label: "Settings", page: "settings" },
+export const NAV_ITEMS: { label: string; page: import("./types").Page; icon: string }[] = [
+  { label: "Home", page: "home", icon: "home" },
+  { label: "Library", page: "library", icon: "library" },
+  { label: "Social", page: "social", icon: "social" },
+  { label: "Messages", page: "messages", icon: "messages" },
+  { label: "Parties", page: "parties", icon: "parties" },
+  { label: "Profile", page: "profile", icon: "profile" },
+  { label: "Discover", page: "discover", icon: "discover" },
+  { label: "Settings", page: "settings", icon: "settings" },
 ];
 
 export const PLATFORM_COLORS: Record<string, string> = {

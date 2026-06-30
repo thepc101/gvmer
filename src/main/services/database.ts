@@ -36,6 +36,8 @@ function initializeSchema(db: SqlJsDatabase) {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       cover TEXT,
+      cover_image TEXT,
+      hero_image TEXT,
       developer TEXT,
       platform TEXT NOT NULL,
       install_path TEXT,
@@ -46,6 +48,9 @@ function initializeSchema(db: SqlJsDatabase) {
       launcher_id TEXT
     )
   `);
+  // Add columns if missing on existing databases
+  try { db.run("ALTER TABLE games ADD COLUMN cover_image TEXT DEFAULT NULL"); } catch {}
+  try { db.run("ALTER TABLE games ADD COLUMN hero_image TEXT DEFAULT NULL"); } catch {};
   db.run(`
     CREATE TABLE IF NOT EXISTS user_profile (
       id TEXT PRIMARY KEY DEFAULT 'default',

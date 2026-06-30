@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { TitleBar } from "./components/ui/TitleBar";
 import { Sidebar } from "./components/ui/Sidebar";
+import { AuthPage } from "./components/auth/AuthPage";
+import { GameProvider, useGame } from "./lib/GameContext";
 import type { Page } from "../shared/types";
 
 const HomePage = lazy(() => import("./components/pages/HomePage").then((m) => ({ default: m.HomePage })));
@@ -27,7 +29,8 @@ const pageTransition = {
   transition: { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] },
 };
 
-export function App() {
+function AppContent() {
+  const { user, loading, signOut } = useGame();
   const [page, setPage] = useState<Page>("home");
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -36,9 +39,7 @@ export function App() {
   useEffect(() => {
     const unsubSearch = window.gvmer?.onSearchShortcut?.(() => setSearchOpen(true));
     const unsubSettings = window.gvmer?.onSettingsShortcut?.(() => setPage("settings"));
-    const unsubUpdateAvail = window.gvmer?.onUpdateAvailable?.((info) => {
-      window.gvmer?.downloadUpdate();
-    });
+    const unsubUpdateAvail = window.gvmer?.onUpdateAvailable?.(() => window.gvmer?.downloadUpdate());
     const unsubUpdateDone = window.gvmer?.onUpdateDownloaded?.((info) => {
       setUpdateBanner(`Update ${info.version} ready. Click to restart.`);
     });
@@ -63,7 +64,18 @@ export function App() {
     setSelectedGameId(null);
   }, []);
 
-  // Game detail view
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 rounded-full border border-foreground/20 border-t-foreground animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage onAuthenticated={() => window.location.reload()} />;
+  }
+
   if (selectedGameId) {
     return (
       <div className="h-screen w-screen flex flex-col bg-background">
@@ -117,7 +129,6 @@ export function App() {
         </main>
       </div>
 
-      {/* Update banner */}
       {updateBanner && (
         <motion.div
           initial={{ y: 50 }}
@@ -126,29 +137,28 @@ export function App() {
         >
           <span className="text-sm">{updateBanner}</span>
           <div className="flex gap-3">
-            <button
-              onClick={() => {
-                window.gvmer?.installUpdate();
-              }}
-              className="text-xs underline underline-offset-4 hover:opacity-70 transition-opacity"
-            >
+            <button onClick={() => window.gvmer?.installUpdate()} className="text-xs underline underline-offset-4 hover:opacity-70 transition-opacity">
               Restart & Install
             </button>
-            <button
-              onClick={() => setUpdateBanner(null)}
-              className="text-xs text-white/60 hover:text-white transition-colors"
-            >
+            <button onClick={() => setUpdateBanner(null)} className="text-xs text-white/60 hover:text-white transition-colors">
               Dismiss
             </button>
           </div>
         </motion.div>
       )}
 
-      {/* Search overlay */}
       {searchOpen && (
         <SearchOverlay onClose={() => setSearchOpen(false)} onSelectGame={handleSelectGame} />
       )}
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <GameProvider>
+      <AppContent />
+    </GameProvider>
   );
 }
 
@@ -159,7 +169,10 @@ function SearchOverlay({ onClose, onSelectGame }: { onClose: () => void; onSelec
   useEffect(() => {
     if (query.length < 1) { setResults({ games: [] }); return; }
     const timer = setTimeout(async () => {
-      try { const res = await window.gvmer.search(query); setResults(res); } catch {}
+      try {
+        const data = await window.gvmer?.search?.(query);
+        if (data) setResults(data);
+      } catch {}
     }, 150);
     return () => clearTimeout(timer);
   }, [query]);
@@ -183,7 +196,7 @@ function SearchOverlay({ onClose, onSelectGame }: { onClose: () => void; onSelec
           <input
             autoFocus
             type="text"
-            placeholder="Search games, friends, posts..."
+            placeholder="Search games..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
@@ -198,7 +211,9 @@ function SearchOverlay({ onClose, onSelectGame }: { onClose: () => void; onSelec
                 onClick={() => { onSelectGame(game.id); onClose(); }}
                 className="w-full flex items-center gap-4 px-5 py-3 hover:bg-[rgba(0,0,0,.04)] transition-colors duration-150 text-left"
               >
-                <div className="w-10 h-10 rounded-lg bg-border flex-shrink-0" />
+                <div className="w-10 h-10 rounded-lg bg-border flex-shrink-0 overflow-hidden">
+                  {game.cover_image && <img src={game.cover_image} alt="" className="w-full h-full object-cover" />}
+                </div>
                 <div>
                   <span className="text-sm font-medium text-foreground">{game.title}</span>
                   <span className="text-xs text-secondary block">{game.platform}</span>
@@ -206,7 +221,7 @@ function SearchOverlay({ onClose, onSelectGame }: { onClose: () => void; onSelec
               </button>
             ))
           ) : query.length > 0 ? (
-            <p className="text-sm text-secondary px-5 py-4">No results for &ldquo;{query}&rdquo;</p>
+            <p className="text-sm text-secondary px-5 py-4">No results</p>
           ) : (
             <p className="text-sm text-secondary px-5 py-4">Type to search...</p>
           )}
