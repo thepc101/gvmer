@@ -8,11 +8,11 @@
   "repository": "github:thepc101/gvmer",
   "main": "dist/main/index.js",
   "scripts": {
-    "dev:main": "esbuild src/main/index.ts --bundle --platform=node --external:electron --external:better-sqlite3 --external:electron-updater --outfile=dist/main/index.js --watch",
+    "dev:main":     "esbuild src/main/index.ts --bundle --platform=node --external:electron --external:electron-updater --outfile=dist/main/index.js --watch",
     "dev:preload": "esbuild src/preload/index.ts --bundle --platform=node --external:electron --outfile=dist/preload/index.js --watch",
     "dev:renderer": "vite",
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:preload\" \"npm run dev:renderer\"",
-    "build:main": "esbuild src/main/index.ts --bundle --platform=node --external:electron --external:better-sqlite3 --external:electron-updater --outfile=dist/main/index.js --minify-whitespace --minify-syntax",
+    "build:main": "esbuild src/main/index.ts --bundle --platform=node --external:electron --external:electron-updater --outfile=dist/main/index.js --minify-whitespace --minify-syntax",
     "build:preload": "esbuild src/preload/index.ts --bundle --platform=node --external:electron --outfile=dist/preload/index.js --minify-whitespace --minify-syntax",
     "build:renderer": "vite build",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
@@ -27,7 +27,7 @@
     "analyze": "vite build --analyze"
   },
   "dependencies": {
-    "better-sqlite3": "^11.0.0",
+    "sql.js": "^1.10.0",
     "electron-updater": "^6.0.0",
     "electron-log": "^5.0.0",
     "react": "^18.3.0",
@@ -38,7 +38,7 @@
   "devDependencies": {
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
-    "@types/better-sqlite3": "^7.6.0",
+    "@types/sql.js": "^1.4.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.0",
     "concurrently": "^8.2.0",

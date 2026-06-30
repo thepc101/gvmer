@@ -1,36 +1,13 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { getDatabase } from "./database";
+import { execute, query } from "./database";
 import type { Game } from "../../shared/types";
 
 export function scanForGames(): Game[] {
-  const db = getDatabase();
   const discovered: Game[] = [];
+  const seen = new Set<string>();
 
-  // Scan Steam
-  const steamPaths = getSteamPaths();
-  for (const steamPath of steamPaths) {
-    if (!fs.existsSync(steamPath)) continue;
-    try {
-      const entries = fs.readdirSync(steamPath, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const appManifestPath = path.join(steamPath, `appmanifest_${entry.name}.acf`);
-          // check common subdirectories
-          const commonPath = path.join(steamPath, "common", entry.name);
-          if (fs.existsSync(commonPath)) {
-            const game = createGameFromPath(entry.name, commonPath, "Steam");
-            if (game) discovered.push(game);
-          }
-        }
-      }
-    } catch {
-      // skip inaccessible paths
-    }
-  }
-
-  // Scan common Steam library folders
   const commonSteamPaths = [
     `${process.env.PROGRAMFILES?.replace(/\\/g, "/") || "C:/Program Files"}/Steam/steamapps/common`,
     `${process.env["PROGRAMFILES(X86)"]?.replace(/\\/g, "/") || "C:/Program Files (x86)"}/Steam/steamapps/common`,
@@ -41,69 +18,29 @@ export function scanForGames(): Game[] {
     try {
       const entries = fs.readdirSync(sp, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const existing = discovered.find((g) => g.title === entry.name);
-          if (!existing) {
-            const game = createGameFromPath(entry.name, path.join(sp, entry.name), "Steam");
-            if (game) discovered.push(game);
-          }
+        if (entry.isDirectory() && !seen.has(entry.name.toLowerCase())) {
+          seen.add(entry.name.toLowerCase());
+          const game = createGameFromPath(entry.name, path.join(sp, entry.name), "Steam");
+          if (game) discovered.push(game);
         }
       }
-    } catch {
-      // skip
-    }
+    } catch {}
   }
 
   // Store discovered games in database
-  const upsert = db.prepare(`
-    INSERT INTO games (id, title, cover, developer, platform, install_path, hours_played, last_played)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET install_path = excluded.install_path
-  `);
+  const existing = query("SELECT id FROM games");
+  const existingIds = new Set(existing.map((r: any) => r.id));
 
-  const tx = db.transaction(() => {
-    for (const game of discovered) {
-      upsert.run(
-        game.id,
-        game.title,
-        game.cover,
-        game.developer,
-        game.platform,
-        game.installPath,
-        game.hoursPlayed,
-        game.lastPlayed
+  for (const game of discovered) {
+    if (!existingIds.has(game.id)) {
+      execute(
+        "INSERT INTO games (id, title, cover, developer, platform, install_path, hours_played, last_played) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [game.id, game.title, game.cover, game.developer, game.platform, game.installPath, game.hoursPlayed, game.lastPlayed]
       );
-    }
-  });
-  tx();
-
-  return discovered;
-}
-
-function getSteamPaths(): string[] {
-  const paths: string[] = [];
-  const base = `${process.env["PROGRAMFILES(X86)"]?.replace(/\\/g, "/") || "C:/Program Files (x86)"}/Steam`;
-  const configPath = path.join(base, "config", "config.vdf");
-
-  if (fs.existsSync(configPath)) {
-    try {
-      const content = fs.readFileSync(configPath, "utf-8");
-      const matches = content.match(/"BaseInstallFolder_\d+"\s+"([^"]+)"/g);
-      if (matches) {
-        for (const match of matches) {
-          const folder = match.match(/"([^"]+)"$/)?.[1];
-          if (folder) {
-            paths.push(path.join(folder.replace(/\\\\/g, "/"), "steamapps", "common"));
-          }
-        }
-      }
-    } catch {
-      // skip
     }
   }
 
-  paths.push(path.join(base, "steamapps", "common"));
-  return paths;
+  return discovered;
 }
 
 function createGameFromPath(name: string, fullPath: string, platform: string): Game | null {
@@ -111,10 +48,11 @@ function createGameFromPath(name: string, fullPath: string, platform: string): G
     const stat = fs.statSync(fullPath);
     if (!stat.isDirectory()) return null;
 
+    const id = `${platform.toLowerCase()}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
     const executable = findExecutable(fullPath);
 
     return {
-      id: `${platform.toLowerCase()}-${name.toLowerCase().replace(/\s+/g, "-")}`,
+      id,
       title: name,
       cover: null,
       developer: "",
@@ -134,7 +72,6 @@ function createGameFromPath(name: string, fullPath: string, platform: string): G
 function findExecutable(dir: string): string | null {
   try {
     const files = fs.readdirSync(dir);
-    // Look for common executable patterns
     const exe = files.find(
       (f) =>
         f.endsWith(".exe") &&
@@ -150,16 +87,15 @@ function findExecutable(dir: string): string | null {
 }
 
 export function getStoredGames(): Game[] {
-  const db = getDatabase();
-  const rows = db.prepare("SELECT * FROM games ORDER BY last_played DESC").all() as any[];
+  const rows = query("SELECT * FROM games ORDER BY last_played DESC") as any[];
   return rows.map((r) => ({
     id: r.id,
     title: r.title,
     cover: r.cover,
-    developer: r.developer,
+    developer: r.developer || "",
     platform: r.platform,
-    installPath: r.install_path,
-    hoursPlayed: r.hours_played,
+    installPath: r.install_path || "",
+    hoursPlayed: r.hours_played || 0,
     achievements: r.achievements || 0,
     totalAchievements: r.total_achievements || 0,
     lastPlayed: r.last_played,

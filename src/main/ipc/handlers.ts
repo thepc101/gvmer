@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow, dialog, shell, app } from "electron";
 import { IPC_CHANNELS } from "../../shared/types";
 import { scanForGames, getStoredGames } from "../services/game-detector";
-import { getDatabase } from "../services/database";
+import { getDb, query, queryOne, execute } from "../services/database";
 import { getLogger } from "../services/logger";
 import { checkForUpdates, downloadUpdate, installUpdate } from "../services/updater";
 
@@ -45,14 +45,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow) {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_GAMES, async () => {
-    return getStoredGames();
-  });
+  ipcMain.handle(IPC_CHANNELS.GET_GAMES, async () => getStoredGames());
 
-  ipcMain.handle(IPC_CHANNELS.GET_GAME, async (_event, id: string) => {
-    const db = getDatabase();
-    return db.prepare("SELECT * FROM games WHERE id = ?").get(id);
-  });
+  ipcMain.handle(IPC_CHANNELS.GET_GAME, async (_event, id: string) =>
+    queryOne("SELECT * FROM games WHERE id = ?", [id])
+  );
 
   ipcMain.handle(IPC_CHANNELS.LAUNCH_GAME, async (_event, installPath: string, launcherId?: string) => {
     try {
@@ -68,8 +65,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow) {
 
   // --- Settings ---
   ipcMain.handle(IPC_CHANNELS.GET_SETTINGS, async () => {
-    const db = getDatabase();
-    const rows = db.prepare("SELECT key, value FROM settings").all() as { key: string; value: string }[];
+    const rows = query("SELECT key, value FROM settings");
     const defaults: Record<string, any> = {
       theme: "light",
       language: "en",
@@ -86,37 +82,25 @@ export function registerIpcHandlers(mainWindow: BrowserWindow) {
   });
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_SETTINGS, async (_event, key: string, value: any) => {
-    const db = getDatabase();
-    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, JSON.stringify(value));
+    execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", [key, JSON.stringify(value)]);
     log.info(`[settings] Updated: ${key} = ${JSON.stringify(value)}`);
     return { success: true };
   });
 
   // --- User data ---
-  ipcMain.handle(IPC_CHANNELS.GET_USER, async () => {
-    const db = getDatabase();
-    const user = db.prepare("SELECT * FROM user_profile WHERE id = 'default'").get() as any;
-    return user ? {
-      id: user.id, username: user.username, avatar: user.avatar,
-      xp: user.xp, level: user.level, status: user.status,
-    } : null;
-  });
+  ipcMain.handle(IPC_CHANNELS.GET_USER, async () => queryOne("SELECT * FROM user_profile WHERE id = 'default'"));
 
-  ipcMain.handle(IPC_CHANNELS.GET_XP_EVENTS, async () => {
-    const db = getDatabase();
-    return db.prepare("SELECT * FROM xp_events ORDER BY timestamp DESC LIMIT 50").all();
-  });
+  ipcMain.handle(IPC_CHANNELS.GET_XP_EVENTS, async () =>
+    query("SELECT * FROM xp_events ORDER BY timestamp DESC LIMIT 50")
+  );
 
-  ipcMain.handle(IPC_CHANNELS.GET_ACHIEVEMENTS, async () => {
-    const db = getDatabase();
-    return db.prepare("SELECT * FROM achievements ORDER BY unlocked DESC, title ASC").all();
-  });
+  ipcMain.handle(IPC_CHANNELS.GET_ACHIEVEMENTS, async () =>
+    query("SELECT * FROM achievements ORDER BY unlocked DESC, title ASC")
+  );
 
   // --- Search ---
-  ipcMain.handle(IPC_CHANNELS.SEARCH, async (_event, query: string) => {
-    const db = getDatabase();
-    const q = `%${query}%`;
-    const games = db.prepare("SELECT id, title, platform, cover FROM games WHERE title LIKE ? LIMIT 10").all(q);
+  ipcMain.handle(IPC_CHANNELS.SEARCH, async (_event, q: string) => {
+    const games = query("SELECT id, title, platform, cover FROM games WHERE title LIKE ? LIMIT 10", [`%${q}%`]);
     return { games };
   });
 
@@ -126,22 +110,22 @@ export function registerIpcHandlers(mainWindow: BrowserWindow) {
     return result.canceled ? null : result.filePaths[0];
   });
 
-  // --- Platform info ---
+  // --- Platform ---
   ipcMain.handle(IPC_CHANNELS.GET_PLATFORM, () => process.platform);
 
   // --- Updates ---
-  ipcMain.handle(IPC_CHANNELS.CHECK_FOR_UPDATES, () => { checkForUpdates(); });
-  ipcMain.handle(IPC_CHANNELS.DOWNLOAD_UPDATE, () => { downloadUpdate(); });
-  ipcMain.handle(IPC_CHANNELS.INSTALL_UPDATE, () => { installUpdate(); });
+  ipcMain.handle(IPC_CHANNELS.CHECK_FOR_UPDATES, () => checkForUpdates());
+  ipcMain.handle(IPC_CHANNELS.DOWNLOAD_UPDATE, () => downloadUpdate());
+  ipcMain.handle(IPC_CHANNELS.INSTALL_UPDATE, () => installUpdate());
 
-  // --- Open external links ---
+  // --- External links ---
   ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_event, url: string) => {
     await shell.openExternal(url);
   });
 
   // --- Logging from renderer ---
   ipcMain.on("renderer:log", (_event, level: string, ...args: any[]) => {
-    const msg = args.map((a: any) => typeof a === "string" ? a : JSON.stringify(a)).join(" ");
+    const msg = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
     (log as any)[level]?.("[renderer]", msg);
   });
 }
